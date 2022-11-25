@@ -21,8 +21,7 @@ public class RenewSqlServerAdminCredentials
     {
         try
         {
-            log.LogInformation("Password: " + GeneratePassword());
-
+            var secretClient = CreateSecretClient();
             var client = new ArmClient(new DefaultAzureCredential());
             var subscriptions = client.GetSubscriptions();
             foreach (var subscription in subscriptions)
@@ -33,15 +32,23 @@ public class RenewSqlServerAdminCredentials
                 foreach (var sqlServer in sqlServers)
                     try
                     {
-                        // var password = GeneratePassword();
-                        // var patch = new SqlServerPatch
-                        // {
-                        //     AdministratorLoginPassword = password
-                        // };
-                        //
-                        // sqlServer.Update(WaitUntil.Completed, patch);
+                        var password = Password.GeneratePassword();
+                        var patch = new SqlServerPatch
+                        {
+                            AdministratorLoginPassword = password
+                        };
+                        
+                        log.LogInformation("Updating password for SQL Server `{0}` ({1})", sqlServer.Data?.Name,
+                            sqlServer.Data?.Id);
+                        
+                        sqlServer.Update(WaitUntil.Completed, patch);
                         log.LogInformation("Updated password for SQL Server `{0}` ({1})", sqlServer.Data?.Name,
                             sqlServer.Data?.Id);
+                        
+                        var secretName = sqlServer.Data?.Name + "-admin-password";
+                        log.LogInformation("Updating secret `{0}` in Key Vault `{1}`", secretName, secretClient.VaultUri);
+                        secretClient.SetSecret(secretName, password);
+                        log.LogInformation("Updated secret `{0}` in Key Vault `{1}`", secretName, secretClient.VaultUri);
                     }
                     catch (Exception e)
                     {
@@ -81,38 +88,5 @@ public class RenewSqlServerAdminCredentials
             };
             var secretClient = new SecretClient(new Uri(environmentValue), new DefaultAzureCredential(), options);
             return secretClient;
-        }
-
-        private static string GeneratePassword(
-            string alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+{}|[]\\<>?/.,",
-            int length = 32)
-        {
-            var bytes = new byte[length * 4];
-            using var generator = RandomNumberGenerator.Create();
-            generator.GetBytes(bytes);
-
-            var result = Convert(bytes, alphabet);
-            return result.Substring(0, length);
-        }
-
-        private static string Convert(byte[] bytes, string alphabet)
-        {
-            if (bytes == null) throw new ArgumentNullException(nameof(bytes));
-            if (alphabet == null) throw new ArgumentNullException(nameof(alphabet));
-            if (bytes.Length == 0) throw new ArgumentException("Value cannot be an empty collection.", nameof(bytes));
-            if (string.IsNullOrWhiteSpace(alphabet))
-                throw new ArgumentException("Value cannot be null or whitespace.", nameof(alphabet));
-
-            var builder = new StringBuilder();
-
-            var l = new BigInteger(alphabet.Length);
-            var zero = new BigInteger(0);
-            var n = new BigInteger(bytes);
-            while (n != zero)
-            {
-                n = BigInteger.DivRem(n, l, out var remainder);
-                builder.Insert(0, alphabet[(int)remainder]);
-            }
-            return builder.ToString();
         }
 }
