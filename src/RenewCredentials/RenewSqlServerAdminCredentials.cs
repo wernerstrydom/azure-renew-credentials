@@ -29,22 +29,19 @@ public class RenewSqlServerAdminCredentials
             {
                 log.LogInformation("Scanning subscription `{0}` ({1}) for SQL Servers", subscription.Data?.DisplayName,
                     subscription.Data?.SubscriptionId);
+                
                 var sqlServers = subscription.GetSqlServers();
                 foreach (var sqlServer in sqlServers)
-                    try
+                {
+                    var password = Password.GeneratePassword();
+                    if (TrySetAdministratorLoginPassword(sqlServer, password, log))
                     {
-                        var password = Password.GeneratePassword();
-                        SetAdministratorLoginPassword(sqlServer, password, log);
-                        var secretName = sqlServer.Data?.Name.ToLower() + "-" + nameof(sqlServer.Data.AdministratorLoginPassword).Dasherize().ToLower();
+                        var secretName = nameof(sqlServer.Data.AdministratorLoginPassword).Dasherize().ToLower();
                         SaveSecret(secretClient, secretName, password, log);
-                        secretName = sqlServer.Data?.Name.ToLower() + "-" + nameof(sqlServer.Data.AdministratorLogin).Dasherize().ToLower();
+                        secretName = nameof(sqlServer.Data.AdministratorLogin).Dasherize().ToLower();
                         SaveSecret(secretClient, secretName, sqlServer.Data?.AdministratorLogin, log);
                     }
-                    catch (Exception e)
-                    {
-                        log.LogError(e, "Error settings password for SQL Server `{0}` ({1})", sqlServer.Data?.Name,
-                            sqlServer.Data?.Id);
-                    }
+                }
 
                 log.LogInformation("Scanned subscription `{0}` ({1}) for SQL Servers", subscription.Data?.DisplayName,
                     subscription.Data?.SubscriptionId);
@@ -52,32 +49,55 @@ public class RenewSqlServerAdminCredentials
         }
         catch (Exception e)
         {
-            log.LogError(e, "Error renewing SQL Server admin credentials");
+            log.LogError(e, "Error refreshing SQL Server admin credentials\n\n{0}", e);
             throw;
         }
     }
 
     private static void SaveSecret(SecretClient client, string name, string value, ILogger log)
     {
-        log.LogInformation("Updating secret `{0}` in Key Vault `{1}`", name, client.VaultUri);
-        client.SetSecret(name, value);
-        log.LogInformation("Updated secret `{0}` in Key Vault `{1}`", name, client.VaultUri);
+        if (client == null) throw new ArgumentNullException(nameof(client));
+        if (log == null) throw new ArgumentNullException(nameof(log));
+        
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Value cannot be null or whitespace.", nameof(name));
+        if (string.IsNullOrWhiteSpace(value))
+            throw new ArgumentException("Value cannot be null or whitespace.", nameof(value));
+        try
+        {
+            log.LogInformation("Updating secret `{0}` in Key Vault `{1}`", name, client.VaultUri);
+            client.SetSecret(name, value);
+            log.LogInformation("Updated secret `{0}` in Key Vault `{1}`", name, client.VaultUri);
+        }
+        catch (Exception e)
+        {
+            log.LogError(e, "Error updating secret `{0}` in Key Vault `{1}`\n\n{2}", name, client.VaultUri, e);
+        }
     }
 
-    private static void SetAdministratorLoginPassword(SqlServerResource sqlServer, string password, ILogger log)
+    private static bool TrySetAdministratorLoginPassword(SqlServerResource sqlServer, string password, ILogger log)
     {
-        log.LogInformation("Updating password for SQL Server `{0}` ({1})", sqlServer.Data?.Name,
-            sqlServer.Data?.Id);
-
-        var patch = new SqlServerPatch
+        var data = sqlServer.Data;
+        var name = data?.Name;
+        var id = data?.Id;
+        try
         {
-            AdministratorLoginPassword = password
-        };
+            log.LogInformation("Updating password for SQL Server `{0}` ({1})", name, id);
 
-
-        sqlServer.Update(WaitUntil.Completed, patch);
-        log.LogInformation("Updated password for SQL Server `{0}` ({1})", sqlServer.Data?.Name,
-            sqlServer.Data?.Id);
+            var patch = new SqlServerPatch
+            {
+                AdministratorLoginPassword = password
+            };
+            
+            sqlServer.Update(WaitUntil.Completed, patch);
+            log.LogInformation("Updated password for SQL Server `{0}` ({1})", name, id);
+            return true;
+        }
+        catch (Exception e)
+        {
+            log.LogError(e, "Error updating password for SQL Server `{0}` ({1})\n\n{2}", name, id, e);
+            return false;
+        }
     }
 
     private static SecretClient CreateSecretClient()
