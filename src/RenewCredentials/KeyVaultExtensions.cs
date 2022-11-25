@@ -13,7 +13,11 @@ public static class KeyVaultExtensions
         try
         {
             var shouldSet = client.TryGetSecretValue(secretName, out var value) == false || value != secretValue;
-            if (shouldSet) client.SetSecret(secretName, secretValue);
+            if (!shouldSet) 
+                return true;
+            
+            var secret = new KeyVaultSecret(secretName, secretValue);
+            client.SetSecret(secret);
             return true;
         }
         catch (RequestFailedException ex)

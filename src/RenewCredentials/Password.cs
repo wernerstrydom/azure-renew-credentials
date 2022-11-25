@@ -9,14 +9,25 @@ public class Password
 {
     public static string GeneratePassword(
         string alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+{}|[]\\<>?/.,",
-        int length = 32)
+        int minLength = 32,
+        int maxLength = 56)
     {
-        var bytes = new byte[length * 4];
+        var bytes = new byte[maxLength * 1024];
         using var generator = RandomNumberGenerator.Create();
         generator.GetBytes(bytes);
 
         var result = Convert(bytes, alphabet);
-        return result.Substring(0, length);
+        if (result.Length < minLength)
+        {
+            throw new InvalidOperationException("Unable to generate password.");
+        }
+
+        var r = Random.Shared.Next(minLength, maxLength);
+        if (r > result.Length)
+        {
+            r = result.Length;
+        }
+        return result[..r];
     }
 
     private static string Convert(byte[] bytes, string alphabet)
@@ -30,12 +41,12 @@ public class Password
         var builder = new StringBuilder();
 
         var l = new BigInteger(alphabet.Length);
-        var zero = new BigInteger(0);
-        var n = new BigInteger(bytes);
-        while (n != zero)
+        var n = BigInteger.Abs(new BigInteger(bytes));
+        while (n != BigInteger.Zero)
         {
             n = BigInteger.DivRem(n, l, out var remainder);
-            builder.Insert(0, alphabet[(int)remainder]);
+            var r = (int)BigInteger.Abs(remainder);
+            builder.Insert(0, alphabet[r]);
         }
 
         return builder.ToString();
