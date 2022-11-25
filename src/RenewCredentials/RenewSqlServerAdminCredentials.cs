@@ -87,9 +87,20 @@ public class RenewSqlServerAdminCredentials
             string alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+{}|[]\\<>?/.,",
             int length = 64)
         {
-            var bytes = new byte[length * 2];
+            var bytes = new byte[length * 4];
             using var generator = RandomNumberGenerator.Create();
             generator.GetBytes(bytes);
+
+            return Convert(bytes, alphabet);
+        }
+
+        private static string Convert(byte[] bytes, string alphabet)
+        {
+            if (bytes == null) throw new ArgumentNullException(nameof(bytes));
+            if (alphabet == null) throw new ArgumentNullException(nameof(alphabet));
+            if (bytes.Length == 0) throw new ArgumentException("Value cannot be an empty collection.", nameof(bytes));
+            if (string.IsNullOrWhiteSpace(alphabet))
+                throw new ArgumentException("Value cannot be null or whitespace.", nameof(alphabet));
 
             var builder = new StringBuilder();
 
@@ -98,11 +109,9 @@ public class RenewSqlServerAdminCredentials
             var n = new BigInteger(bytes);
             while (n != zero)
             {
-                var index = n % l;
-                builder.Append(alphabet[(int)index]);
-                n = n / l;
+                n = BigInteger.DivRem(n, l, out var remainder);
+                builder.Insert(0, alphabet[(int)remainder]);
             }
-
             return builder.ToString();
         }
-    }
+}
