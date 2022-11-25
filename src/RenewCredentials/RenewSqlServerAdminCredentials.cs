@@ -85,13 +85,14 @@ public class RenewSqlServerAdminCredentials
 
         private static string GeneratePassword(
             string alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+{}|[]\\<>?/.,",
-            int length = 64)
+            int length = 32)
         {
             var bytes = new byte[length * 4];
             using var generator = RandomNumberGenerator.Create();
             generator.GetBytes(bytes);
 
-            return Convert(bytes, alphabet);
+            var result = Convert(bytes, alphabet);
+            return result.Substring(0, length);
         }
 
         private static string Convert(byte[] bytes, string alphabet)
