@@ -37,6 +37,7 @@ public class Password
             n = BigInteger.DivRem(n, l, out var remainder);
             builder.Insert(0, alphabet[(int)remainder]);
         }
+
         return builder.ToString();
     }
 }
