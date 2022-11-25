@@ -18,7 +18,7 @@ namespace RenewCredentials;
 public class RenewSqlServerAdminCredentials
 {
     [FunctionName("RenewSqlServerAdminCredentials")]
-    public static void Run([TimerTrigger("0 */5 * * * *")] TimerInfo timer, ILogger log)
+    public static void Run([TimerTrigger("0 0 11 * * *")] TimerInfo timer, ILogger log)
     {
         try
         {
