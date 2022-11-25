@@ -20,6 +20,7 @@ namespace RenewCredentials
             var subscriptions = armClient.GetSubscriptions();
             foreach (var subscription in subscriptions)
             {
+                log.LogInformation("Scanning subscription `{0}` ({1}) for ", subscription.Data?.DisplayName, subscription.Id);
                 var sqlServers = subscription.GetSqlServers();
                 foreach (var sqlServer in sqlServers)
                 {
