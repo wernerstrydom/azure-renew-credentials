@@ -33,14 +33,19 @@ public class RenewSqlServerAdminCredentials
                 var sqlServers = subscription.GetSqlServers();
                 foreach (var sqlServer in sqlServers)
                 {
+                    var sqlServerName = sqlServer.Data?.Name;
+                    var sqlServerId = sqlServer.Data?.Id;
+                    
+                    log.LogInformation($"Renewing password for SQL Server `{sqlServerName}` ({sqlServerId})");
+                    
                     var password = Password.GeneratePassword();
-                    if (TrySetAdministratorLoginPassword(sqlServer, password, log))
-                    {
-                        var secretName = nameof(sqlServer.Data.AdministratorLoginPassword).Dasherize().ToLower();
-                        SaveSecret(secretClient, secretName, password, log);
-                        secretName = nameof(sqlServer.Data.AdministratorLogin).Dasherize().ToLower();
-                        SaveSecret(secretClient, secretName, sqlServer.Data?.AdministratorLogin, log);
-                    }
+                    if (!TrySetAdministratorLoginPassword(sqlServer, password, log)) 
+                        continue;
+                    
+                    var secretName = sqlServerName + "-administrator-login-password";
+                    SaveSecret(secretClient, secretName, password, log);
+                    secretName = sqlServerName + "-administrator-login";
+                    SaveSecret(secretClient, secretName, sqlServer.Data?.AdministratorLogin, log);
                 }
 
                 log.LogInformation("Scanned subscription `{0}` ({1}) for SQL Servers", subscription.Data?.DisplayName,
@@ -65,9 +70,18 @@ public class RenewSqlServerAdminCredentials
             throw new ArgumentException("Value cannot be null or whitespace.", nameof(value));
         try
         {
-            log.LogInformation("Updating secret `{0}` in Key Vault `{1}`", name, client.VaultUri);
-            client.SetSecret(name, value);
-            log.LogInformation("Updated secret `{0}` in Key Vault `{1}`", name, client.VaultUri);
+            log.LogInformation("Retrieving secret `{0}` from Key Vault `{1}`", name, client.VaultUri);
+            var secret = client.GetSecret(name);
+            if (secret?.Value?.Value != value)
+            {
+                log.LogInformation("Updating secret `{0}` in Key Vault `{1}`", name, client.VaultUri);
+                client.SetSecret(name, value);
+                log.LogInformation("Updated secret `{0}` in Key Vault `{1}`", name, client.VaultUri);
+            }
+            else
+            {
+                log.LogInformation("Secret `{0}` in Key Vault `{1}` is up to date", name, client.VaultUri);
+            }
         }
         catch (Exception e)
         {
