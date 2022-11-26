@@ -1,24 +1,41 @@
-using System;
+using Azure.Identity;
+using Azure.ResourceManager;
+using Azure.ResourceManager.Sql;
 using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Extensions.Logging;
 
-namespace RenewCredentials
+namespace RenewCredentials;
+
+public class DiscoverSqlServersFunc
 {
-    public class DiscoverSqlServersFunc
+    [FunctionName("DiscoverSqlServers")]
+    public void Run(
+        [TimerTrigger("0 0 19 * * *")] TimerInfo timer,
+        [Queue("sql-servers")] ICollector<string> servers,
+        ILogger log)
     {
-        [FunctionName("DiscoverSqlServers")]
-        public void Run(
-            [TimerTrigger("0 0 19 * * *")]TimerInfo timer, 
-            [Queue("sql-servers", Connection = "AzureWebJobsStorage")] ICollector<string> servers, 
-            ILogger log)
+        var client = new ArmClient(new DefaultAzureCredential());
+        var subscriptions = client.GetSubscriptions();
+        foreach (var subscription in subscriptions)
         {
-            log.LogInformation($"C# Timer trigger function executing at: {DateTime.Now}");
-            servers.Add("server1");   
-            servers.Add("server2");
-            servers.Add("server3");
-            servers.Add("server4");         
-            log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
+            var subscriptionName = subscription.Data?.DisplayName;
+            var subscriptionId = subscription.Data?.SubscriptionId;
+
+            log.LogInformation("Scanning subscription `{SubscriptionName}` ({SubscriptionId}) for SQL Servers",
+                subscriptionName, subscriptionId);
+
+            var sqlServers = subscription.GetSqlServers();
+            foreach (var sqlServer in sqlServers)
+            {
+                var sqlServerName = sqlServer.Data?.Name;
+                var sqlServerId = sqlServer.Data?.Id;
+                log.LogInformation("Found SQL Server subscription `{SqlServerName}` ({SqlServerId}) for SQL Servers",
+                    sqlServerName, sqlServerId);
+                servers.Add(sqlServerId);
+            }
+
+            log.LogInformation("Scanned subscription `{SubscriptionName}` ({SubscriptionId}) for SQL Servers",
+                subscriptionName, subscriptionId);
         }
     }
 }

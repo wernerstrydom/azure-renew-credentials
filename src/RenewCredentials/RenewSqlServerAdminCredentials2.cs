@@ -67,7 +67,27 @@ public class RenewSqlServerAdminCredentials2
 
     private static void SetSecretValue(SecretClient secretClient, string secretName, string password, ILogger log)
     {
-        if (secretClient.TrySetSecret(secretName, password))
+        bool ret;
+        try
+        {
+            var shouldSet = secretClient.TryGetSecretValue(secretName, out var value) == false || value != password;
+            if (!shouldSet)
+            {
+                ret = true;
+            }
+            else
+            {
+                var secret = new KeyVaultSecret(secretName, password);
+                secretClient.SetSecret(secret);
+                ret = true;
+            }
+        }
+        catch (RequestFailedException ex)
+        {
+            ret = false;
+        }
+
+        if (ret)
             log.LogInformation("Successfully set secret `{0}`", secretName);
         else
             log.LogError("Failed to set secret `{0}`", secretName);

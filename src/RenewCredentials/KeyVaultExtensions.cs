@@ -8,24 +8,6 @@ namespace RenewCredentials;
 
 public static class KeyVaultExtensions
 {
-    public static bool TrySetSecret(this SecretClient client, string secretName, string secretValue)
-    {
-        try
-        {
-            var shouldSet = client.TryGetSecretValue(secretName, out var value) == false || value != secretValue;
-            if (!shouldSet) 
-                return true;
-            
-            var secret = new KeyVaultSecret(secretName, secretValue);
-            client.SetSecret(secret);
-            return true;
-        }
-        catch (RequestFailedException ex)
-        {
-            return false;
-        }
-    }
-
     public static bool TryGetSecretValue(this SecretClient client, string name, out string value)
     {
         value = string.Empty;

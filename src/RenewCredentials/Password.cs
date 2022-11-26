@@ -17,16 +17,10 @@ public class Password
         generator.GetBytes(bytes);
 
         var result = Convert(bytes, alphabet);
-        if (result.Length < minLength)
-        {
-            throw new InvalidOperationException("Unable to generate password.");
-        }
+        if (result.Length < minLength) throw new InvalidOperationException("Unable to generate password.");
 
         var r = Random.Shared.Next(minLength, maxLength);
-        if (r > result.Length)
-        {
-            r = result.Length;
-        }
+        if (r > result.Length) r = result.Length;
         return result[..r];
     }
 
