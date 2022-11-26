@@ -48,4 +48,9 @@ public class EventSource
         _logger.LogInformation("Renewed administrator password for SQL Server `{SqlServerName}` ({SqlServerId})", name,
             id);
     }
+
+    public void SqlServerNotFound(string id)
+    {
+        _logger.LogWarning("SQL Server with ID `{SqlServerId}` not found", id);
+    }
 }

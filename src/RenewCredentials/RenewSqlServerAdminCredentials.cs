@@ -23,7 +23,12 @@ public class RenewSqlServerAdminCredentialsFunc
 
         var client = new ArmClient(new DefaultAzureCredential());
         var rid = ResourceIdentifier.Parse(id);
-        var sqlServer = client.GetSqlServerResource(rid);
+        var sqlServer = client.GetSqlServerResource(rid)?.Get()?.Value;
+        if (sqlServer == null)
+        {
+            eventSource.SqlServerNotFound(id);
+            return;
+        }
         
         var password = Password.GeneratePassword();
         UpdateSqlServerAdminPassword(sqlServer, password, eventSource);
