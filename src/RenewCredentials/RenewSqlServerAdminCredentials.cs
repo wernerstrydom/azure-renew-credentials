@@ -8,13 +8,13 @@ namespace RenewCredentials
     public class RenewSqlServerAdminCredentialsFunc
     {
         [FunctionName("RenewSqlServerAdminCredentials")]
-        public void Run(
-            [QueueTrigger("sql-servers", Connection = "AzureWebJobsStorage")]string data, 
-            [Queue("sql-servers", Connection = "AzureWebJobsStorage")] out string notification, 
+        [return: Queue("sql-servers")]
+        public string Run(
+            [QueueTrigger("sql-servers", Connection = "AzureWebJobsStorage")]string data,
             ILogger log)
         {
-            notification = $"Processed {data}";
             log.LogInformation($"C# Queue trigger function processed: {data}");
+            return $"Processed {data}";
         }
     }
 }
