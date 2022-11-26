@@ -9,7 +9,7 @@ namespace RenewCredentials
     {
         [FunctionName("DiscoverSqlServers")]
         public void Run(
-            [TimerTrigger("0 */5 * * * *")]TimerInfo timer, 
+            [TimerTrigger("0 0 19 * * *")]TimerInfo timer, 
             [Queue("sql-servers", Connection = "AzureWebJobsStorage")] ICollector<string> servers, 
             ILogger log)
         {
