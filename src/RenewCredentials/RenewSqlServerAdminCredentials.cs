@@ -8,7 +8,7 @@ namespace RenewCredentials
     public class RenewSqlServerAdminCredentialsFunc
     {
         [FunctionName("RenewSqlServerAdminCredentials")]
-        [return: Queue("sql-servers")]
+        [return: Queue("notifications")]
         public string Run(
             [QueueTrigger("sql-servers", Connection = "AzureWebJobsStorage")]string data,
             ILogger log)
